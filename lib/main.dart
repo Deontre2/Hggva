@@ -94,8 +94,8 @@ class _VisaFormPageState extends State<VisaFormPage> {
 
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  String _selectedVisaType = 'tourist';
-  final List<String> _visaTypes = ['tourist', 'student', 'business'];
+  String _selectedVisaType = 'ASS67';
+  final List<String> _visaTypes = ['ASS67', 'ASX887', 'DSS29'];
   bool _isLoading = false;
 
   Future<void> _submitForm() async {
@@ -122,7 +122,7 @@ class _VisaFormPageState extends State<VisaFormPage> {
                 content: Text('Application submitted successfully!')),
           );
           _emailController.clear();
-          setState(() => _selectedVisaType = 'tourist');
+          setState(() => _selectedVisaType = 'ASS67');
         } else {
           throw Exception('Failed to submit application: ${response.body}');
         }
@@ -188,7 +188,7 @@ class _VisaFormPageState extends State<VisaFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Visa Application Form'),
+        title: const Text('Assistant Hub'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -218,7 +218,7 @@ class _VisaFormPageState extends State<VisaFormPage> {
               DropdownButtonFormField<String>(
                 value: _selectedVisaType,
                 decoration: const InputDecoration(
-                  labelText: 'Visa Type',
+                  labelText: 'Code type',
                   border: OutlineInputBorder(),
                 ),
                 items: _visaTypes.map((String visaType) {
@@ -312,7 +312,7 @@ class _VisaFormPageState extends State<VisaFormPage> {
               },
             );
           },
-          child: const Text('Appointments'),
+          child: const Text('Confirmations'),
         ),
       ),
     );
