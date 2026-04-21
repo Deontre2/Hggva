@@ -1,5 +1,5 @@
-name: visa_form_app
-description: A Flutter app for collecting visa application information
+name: assistant_hb
+description: An assistant app
 version: 1.0.0+1
 
 environment:
