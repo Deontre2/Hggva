@@ -49,10 +49,10 @@ class VisaFormApp extends StatelessWidget {
         ),
         elevatedButtonTheme: const ElevatedButtonThemeData(
           style: ButtonStyle(
-            backgroundColor: WidgetStatePropertyAll(Color(0xFF218C74)),
-            foregroundColor: WidgetStatePropertyAll(Colors.white),
-            textStyle: WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            shape: WidgetStatePropertyAll(
+            backgroundColor: MaterialStatePropertyAll(Color(0xFF218C74)),
+            foregroundColor: MaterialStatePropertyAll(Colors.white),
+            textStyle: MaterialStatePropertyAll(TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            shape: MaterialStatePropertyAll(
               RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
             ),
           ),
@@ -96,9 +96,9 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
   }
 
   Future<void> _checkAccessibilityPermission() async {
-    final status = await Permission.accessibility.status;
+    // Accessibility permission is not exposed through the permission_handler package.
     setState(() {
-      _hasAccessibilityPermission = status.isGranted;
+      _hasAccessibilityPermission = false;
     });
   }
 
