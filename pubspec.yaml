@@ -1,5 +1,5 @@
-name: assistant_hb
-description: An assistant app
+name: vilato_tourism
+description: A visa application form app for Vilato Tourism
 version: 1.0.0+1
 
 environment:
@@ -8,10 +8,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  android_intent_plus: ^5.3.0
-  http: ^1.1.0
-  intl: ^0.18.1
-  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

