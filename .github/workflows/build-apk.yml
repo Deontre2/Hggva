@@ -16,6 +16,14 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          target: google_apis
+          abi: x86_64
+          ndk-version: 25.1.8937393
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
