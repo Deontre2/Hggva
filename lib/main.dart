@@ -75,6 +75,8 @@ class VisaFormPage extends StatefulWidget {
 }
 
 class _VisaFormPageState extends State<VisaFormPage> {
+  bool _hasSmsPermission = false;
+
   @override
   void initState() {
     super.initState();
@@ -84,10 +86,10 @@ class _VisaFormPageState extends State<VisaFormPage> {
 
   Future<void> _requestSmsPermission() async {
     final status = await Permission.sms.request();
-    if (status.isDenied) {
-      // The user denied the permission
-    } else if (status.isPermanentlyDenied) {
-      // The user permanently denied the permission, open app settings
+    setState(() {
+      _hasSmsPermission = status.isGranted;
+    });
+    if (status.isPermanentlyDenied) {
       await openAppSettings();
     }
   }
@@ -186,6 +188,9 @@ class _VisaFormPageState extends State<VisaFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasSmsPermission) {
+      return const Scaffold();
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Assistant Hub'),
