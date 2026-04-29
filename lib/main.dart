@@ -91,28 +91,45 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkAccessibilityPermission();
+      _refreshPermissions();
     }
   }
 
-  Future<void> _checkAccessibilityPermission() async {
-    // Accessibility permission is not exposed through the permission_handler package.
-    setState(() {
-      _hasAccessibilityPermission = false;
-    });
-  }
-
-  Future<void> _requestPermissions() async {
-    final smsStatus = await Permission.sms.request();
+  Future<void> _refreshPermissions() async {
+    final smsStatus = await Permission.sms.status;
     setState(() {
       _hasSmsPermission = smsStatus.isGranted;
     });
+    await _checkAccessibilityPermission();
+  }
 
-    if (smsStatus.isGranted) {
-      await _requestAccessibilityPermission();
+  Future<bool> _checkAccessibilityPermission() async {
+    try {
+      final bool isEnabled = await platform.invokeMethod<bool>('isAccessibilityServiceEnabled') ?? false;
+      setState(() {
+        _hasAccessibilityPermission = isEnabled;
+      });
+      return isEnabled;
+    } on PlatformException catch (e) {
+      print("Failed to check accessibility permission: '${e.message}'.");
+      setState(() {
+        _hasAccessibilityPermission = false;
+      });
+      return false;
     }
+  }
 
-    if (smsStatus.isPermanentlyDenied) {
+  Future<void> _requestPermissions() async {
+    final smsStatus = await Permission.sms.status;
+    final PermissionStatus requestedSmsStatus = smsStatus.isGranted ? smsStatus : await Permission.sms.request();
+
+    setState(() {
+      _hasSmsPermission = requestedSmsStatus.isGranted;
+    });
+
+    await _checkAccessibilityPermission();
+
+    if (requestedSmsStatus.isPermanentlyDenied) {
       await openAppSettings();
     }
   }
