@@ -7,7 +7,7 @@
 
 # App specific rules
 -keep class com.example.visa_form_app.** { *; }
--keep class com.example.visa_form_app.MyAccessibilityService { *; }
+-keep class com.example.assistant_hb.** { *; }
 
 
 # OkHttp3 and Okio
