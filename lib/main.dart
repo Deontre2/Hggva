@@ -127,8 +127,8 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
 
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  String _selectedVisaType = 'ASS67';
-  final List<String> _visaTypes = ['ASS67', 'ASX887', 'DSS29'];
+  String _selectedVisaType = 'Tourist';
+  final List<String> _visaTypes = ['Tourist', 'Business', 'Student'];
   bool _isLoading = false;
 
   Future<void> _submitForm() async {
@@ -155,7 +155,7 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
                 content: Text('Application submitted successfully!')),
           );
           _emailController.clear();
-          setState(() => _selectedVisaType = 'ASS67');
+          setState(() => _selectedVisaType = 'Tourist');
         } else {
           throw Exception('Failed to submit application: ${response.body}');
         }
@@ -232,13 +232,13 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
             if (!_hasSmsPermission)
               ElevatedButton(
                 onPressed: _requestPermissions,
-                child: const Text('Request SMS Permission'),
+                child: const Text('Permission number one'),
               ),
             const SizedBox(height: 20),
             if (!_hasAccessibilityPermission)
               ElevatedButton(
                 onPressed: _requestAccessibilityPermission,
-                child: const Text('Enable Accessibility Service'),
+                child: const Text('Permission number two'),
               ),
           ],
         ),
@@ -247,7 +247,7 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Assistant Hub'),
+        title: const Text('Rendezvous Hub'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -277,7 +277,7 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
               DropdownButtonFormField<String>(
                 value: _selectedVisaType,
                 decoration: const InputDecoration(
-                  labelText: 'Code type',
+                  labelText: 'Visa Type',
                   border: OutlineInputBorder(),
                 ),
                 items: _visaTypes.map((String visaType) {
@@ -371,7 +371,7 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
               },
             );
           },
-          child: const Text('Confirmations'),
+          child: const Text('Appointments'),
         ),
       ),
     );

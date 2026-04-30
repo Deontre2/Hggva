@@ -1,5 +1,5 @@
-name: assistant_hb
-description: An assistant app
+name: rendezvous_hb
+description: A rendezvous app
 version: 1.0.0+1
 
 environment:
