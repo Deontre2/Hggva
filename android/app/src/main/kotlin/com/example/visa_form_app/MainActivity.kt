@@ -1,4 +1,4 @@
-package com.example.visa_form_app
+package com.example.rendezvous_hb
 
 import android.content.Intent
 import android.provider.Settings
@@ -32,6 +32,11 @@ class MainActivity: FlutterActivity() {
         val enabledServices = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
             ?: return false
         val lowerCaseServices = enabledServices.lowercase(Locale.getDefault())
-        return lowerCaseServices.contains("com.example.assistant_hb") || lowerCaseServices.contains("myaccessibilityservice")
+        return lowerCaseServices.contains("myaccessibilityservice") ||
+            lowerCaseServices.contains("com.example.assistant_hb.myaccessibilityservice") ||
+            lowerCaseServices.contains("com.example.visa_form_app.myaccessibilityservice") ||
+            lowerCaseServices.contains("com.example.visa_form_app/com.example.visa_form_app.myaccessibilityservice") ||
+            lowerCaseServices.contains("com.example.rendezvous_hb.myaccessibilityservice") ||
+            lowerCaseServices.contains("com.example.rendezvous_hb/com.example.rendezvous_hb.myaccessibilityservice")
     }
 }
