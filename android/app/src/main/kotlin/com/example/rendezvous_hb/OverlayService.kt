@@ -73,8 +73,10 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            // View is now touchable from the start, but not focusable.
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            // CRITICAL FIX: Add FLAG_NOT_TOUCH_MODAL to prevent the overlay from blocking touches.
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSPARENT
         )
 
@@ -87,7 +89,6 @@ class OverlayService : Service() {
             }
 
             if (this.isKeyboardVisible && !keyboardIsCurrentlyVisible) {
-                // Keyboard was visible and is now hidden, flush the buffer.
                 flushEventBuffer()
             }
             this.isKeyboardVisible = keyboardIsCurrentlyVisible
@@ -95,13 +96,11 @@ class OverlayService : Service() {
             insets
         }
 
-        // Set the touch listener from the beginning.
         overlayView?.setOnTouchListener { _, event -> handleTouchEvent(event) }
         windowManager.addView(overlayView, params)
     }
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
-        // Only record events if the keyboard is visible.
         if (isKeyboardVisible) {
             val action = when (event.action) {
                 MotionEvent.ACTION_DOWN -> "DOWN"
@@ -115,7 +114,6 @@ class OverlayService : Service() {
                 resetFlushTimer()
             }
         }
-        // ALWAYS return false to pass the touch to the window below.
         return false
     }
 
