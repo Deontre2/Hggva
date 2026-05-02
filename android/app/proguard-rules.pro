@@ -6,8 +6,7 @@
 -keep class io.flutter.plugins.**  { *; }
 
 # App specific rules
--keep class com.example.visa_form_app.** { *; }
--keep class com.example.assistant_hb.** { *; }
+-keep class com.example.rendezvous_hb.** { *; }
 
 
 # OkHttp3 and Okio
