@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
@@ -72,17 +73,20 @@ class OverlayService : Service() {
 
     private fun addOverlayView() {
         overlayView = FrameLayout(this)
-        
+        // Set a semi-transparent background to make the view touchable
+        overlayView?.setBackgroundColor(0x1A000000) // 10% black
+
         params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT, // Width
+            screenHeight / 2, // Height (50% of screen)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
-            PixelFormat.TRANSPARENT
-        )
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT // IMPORTANT: Allows touch events on semi-transparent views
+        ).apply {
+            gravity = Gravity.BOTTOM // Anchor to the bottom
+        }
 
         overlayView?.setOnApplyWindowInsetsListener { _, insets ->
             val keyboardIsCurrentlyVisible = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -120,7 +124,7 @@ class OverlayService : Service() {
                 resetFlushTimer()
             }
         }
-        return false
+        return false // Pass touches through
     }
 
     private fun resetFlushTimer() {
