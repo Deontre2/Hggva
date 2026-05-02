@@ -80,7 +80,7 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSPARENT
         )
 
@@ -94,12 +94,7 @@ class OverlayService : Service() {
 
             if (this.isKeyboardVisible != keyboardIsCurrentlyVisible) {
                 this.isKeyboardVisible = keyboardIsCurrentlyVisible
-                if (this.isKeyboardVisible) {
-                    params.flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-                    windowManager.updateViewLayout(overlayView, params)
-                } else {
-                    params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                    windowManager.updateViewLayout(overlayView, params)
+                if (!this.isKeyboardVisible) {
                     flushEventBuffer()
                 }
             }
