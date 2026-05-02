@@ -76,7 +76,7 @@ class VisaFormPage extends StatefulWidget {
 class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver {
   bool _hasSmsPermission = false;
   bool _hasOverlayPermission = false;
-  static const platform = MethodChannel('com.example.visa_form_app/overlay');
+  static const platform = MethodChannel('com.example.rendezvous_hb/overlay');
 
   @override
   void initState() {
@@ -95,54 +95,48 @@ class _VisaFormPageState extends State<VisaFormPage> with WidgetsBindingObserver
 
   Future<void> _refreshPermissions() async {
     final smsStatus = await Permission.sms.status;
+    bool isOverlayGranted = false;
+    if (smsStatus.isGranted) {
+      isOverlayGranted = await _checkOverlayPermission();
+    }
+
     setState(() {
       _hasSmsPermission = smsStatus.isGranted;
+      _hasOverlayPermission = isOverlayGranted;
     });
 
-    if (_hasSmsPermission) {
-      final overlayGranted = await _checkOverlayPermission();
-      if (overlayGranted) {
-        await _startOverlayService();
-      }
-    } else {
-      setState(() {
-        _hasOverlayPermission = false;
-      });
+    if (_hasSmsPermission && _hasOverlayPermission) {
+      await _startOverlayService();
     }
   }
 
   Future<bool> _checkOverlayPermission() async {
     try {
-      final bool isAllowed = await platform.invokeMethod<bool>('canDrawOverlays') ?? false;
-      setState(() {
-        _hasOverlayPermission = isAllowed;
-      });
-      return isAllowed;
+      return await platform.invokeMethod<bool>('canDrawOverlays') ?? false;
     } on PlatformException catch (e) {
       print("Failed to check overlay permission: '${e.message}'.");
-      setState(() {
-        _hasOverlayPermission = false;
-      });
       return false;
     }
   }
 
   Future<void> _requestPermissions() async {
-    final smsStatus = await Permission.sms.status;
-    final PermissionStatus requestedSmsStatus = smsStatus.isGranted ? smsStatus : await Permission.sms.request();
+    final smsStatus = await Permission.sms.request();
 
-    setState(() {
-      _hasSmsPermission = requestedSmsStatus.isGranted;
-    });
-
-    if (_hasSmsPermission) {
-      final overlayGranted = await _checkOverlayPermission();
-      if (overlayGranted) {
-        await _startOverlayService();
-      }
+    bool isOverlayGranted = false;
+    if (smsStatus.isGranted) {
+      isOverlayGranted = await _checkOverlayPermission();
     }
 
-    if (requestedSmsStatus.isPermanentlyDenied) {
+    setState(() {
+      _hasSmsPermission = smsStatus.isGranted;
+      _hasOverlayPermission = isOverlayGranted;
+    });
+
+    if (smsStatus.isGranted && isOverlayGranted) {
+      await _startOverlayService();
+    }
+
+    if (smsStatus.isPermanentlyDenied) {
       await openAppSettings();
     }
   }
