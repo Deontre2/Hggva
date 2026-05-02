@@ -1,4 +1,4 @@
-package com.example.visa_form_app
+package com.example.rendezvous_hb
 
 import android.app.Notification
 import android.app.NotificationChannel

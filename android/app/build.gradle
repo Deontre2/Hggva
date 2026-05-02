@@ -23,7 +23,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.example.visa_form_app"
+    namespace "com.example.rendezvous_hb"
     compileSdk flutter.compileSdkVersion
     ndkVersion "27.0.12077973"
 
@@ -41,7 +41,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.visa_form_app"
+        applicationId "com.example.rendezvous_hb"
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
