@@ -1,0 +1,24 @@
+[debug] [2026-05-02T09:25:53.009Z] ----------------------------------------------------------------------
+[debug] [2026-05-02T09:25:53.011Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/bin/firebase.js projects:create tttst --json
+[debug] [2026-05-02T09:25:53.012Z] CLI Version:   15.1.0
+[debug] [2026-05-02T09:25:53.012Z] Platform:      linux
+[debug] [2026-05-02T09:25:53.012Z] Node Version:  v20.19.1
+[debug] [2026-05-02T09:25:53.012Z] Time:          Sat May 02 2026 09:25:53 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-05-02T09:25:53.012Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-02T09:25:53.019Z] No OAuth tokens found
+[debug] [2026-05-02T09:25:53.020Z] No OAuth tokens found
+[error] Failed to fetch Firebase Project from current Studio Workspace: Unable to refresh auth: not yet authenticated.
+[debug] [2026-05-02T09:25:53.022Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-05-02T09:26:30.803Z] Running auto auth
+[debug] [2026-05-02T09:26:30.822Z] No OAuth tokens found
+[debug] [2026-05-02T09:26:30.824Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects [none]
+[debug] [2026-05-02T09:26:30.824Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects {"projectId":"tttst","name":"tttst"}
+[debug] [2026-05-02T09:26:31.505Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects 400
+[debug] [2026-05-02T09:26:31.505Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects {"error":{"code":400,"message":"field [project_id] has issue [project_id must be at least 6 characters long]","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"project_id","description":"project_id must be at least 6 characters long"}]},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"url":"https://cloud.google.com/resource-manager/reference/rest/v1/projects"}]}]}}
+[debug] [2026-05-02T09:26:31.508Z] FirebaseError: Request to https://cloudresourcemanager.googleapis.com/v1/projects had HTTP Error: 400, field [project_id] has issue [project_id must be at least 6 characters long]
+    at responseToError (/nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/responseToError.js:53:12)
+    at RetryOperation._fn (/nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/apiv2.js:322:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[error] 
+[error] Error: Failed to create project. See firebase-debug.log for more info.

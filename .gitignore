@@ -1,0 +1,10 @@
+<<<<<<< HEAD
+build/
+jdk-17/
+*.tar.gz
+=======
+openjdk-17_linux-x64_bin.tar.gz
+openjdk-17_linux-x64_bin.tar.gz.1
+/build/
+/jdk-17/
+>>>>>>> 3e365c9 (feat: replace firebase crashlytics with telegram reporting)
